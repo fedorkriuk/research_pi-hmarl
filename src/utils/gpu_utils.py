@@ -1,548 +1,378 @@
-"""
-GPU Detection and CUDA Setup Utilities for PI-HMARL
+"""GPU utilities for PI-HMARL Framework
 
-This module provides utilities for detecting GPU availability, setting up CUDA,
-optimizing GPU memory usage, and managing multi-GPU configurations.
+This module provides utilities for GPU detection, memory management,
+and CUDA setup for optimal performance in multi-agent training.
 """
 
 import os
-import sys
-import logging
-import warnings
-from typing import Dict, List, Optional, Tuple, Any
-import subprocess
-import platform
-from dataclasses import dataclass
-from contextlib import contextmanager
+import torch
+import numpy as np
+from typing import List, Dict, Optional, Tuple, Any
+import nvidia_ml_py as nvml
 import psutil
+from dataclasses import dataclass
+import logging
+
+logger = logging.getLogger(__name__)
 
 
 @dataclass
 class GPUInfo:
-    """Information about a GPU device."""
-    id: int
+    """Container for GPU information"""
+    index: int
     name: str
-    memory_total: int  # MB
-    memory_free: int   # MB
-    memory_used: int   # MB
-    utilization: float  # %
-    temperature: Optional[float] = None
-    power_draw: Optional[float] = None
-    compute_capability: Optional[Tuple[int, int]] = None
+    total_memory: int  # in bytes
+    free_memory: int   # in bytes
+    used_memory: int   # in bytes
+    temperature: float  # in Celsius
+    utilization: float  # percentage
+    power_draw: float   # in Watts
+    power_limit: float  # in Watts
+    compute_capability: Tuple[int, int]
 
 
 class GPUManager:
-    """
-    Comprehensive GPU management and CUDA setup utilities.
+    """Manages GPU resources for PI-HMARL training"""
     
-    Features:
-    - GPU detection and validation
-    - CUDA setup and configuration
-    - Memory optimization
-    - Multi-GPU support
-    - Performance monitoring
-    """
-    
-    def __init__(self, logger: Optional[logging.Logger] = None):
-        """
-        Initialize GPU manager.
-        
-        Args:
-            logger: Logger instance for GPU operations
-        """
-        self.logger = logger or logging.getLogger(__name__)
-        self.torch_available = False
-        self.cuda_available = False
-        self.gpu_count = 0
-        self.gpu_info: List[GPUInfo] = []
-        
-        # Initialize GPU detection
-        self._detect_gpu_libraries()
-        self._detect_cuda()
-        self._detect_gpus()
-        
-        # Log GPU status
-        self._log_gpu_status()
-    
-    def _detect_gpu_libraries(self) -> None:
-        """Detect available GPU libraries."""
-        # Check PyTorch availability
-        try:
-            import torch
-            self.torch = torch
-            self.torch_available = True
-            self.logger.info(f"PyTorch version: {torch.__version__}")
-        except ImportError:
-            self.torch = None
-            self.logger.warning("PyTorch not available")
-        
-        # Check other GPU libraries
-        try:
-            import cupy
-            self.cupy_available = True
-            self.logger.info(f"CuPy version: {cupy.__version__}")
-        except ImportError:
-            self.cupy_available = False
-        
-        try:
-            import tensorflow as tf
-            self.tensorflow_available = True
-            self.logger.info(f"TensorFlow version: {tf.__version__}")
-        except ImportError:
-            self.tensorflow_available = False
-    
-    def _detect_cuda(self) -> None:
-        """Detect CUDA availability and version."""
-        if not self.torch_available:
-            self.logger.warning("Cannot detect CUDA without PyTorch")
-            return
-        
-        try:
-            self.cuda_available = self.torch.cuda.is_available()
-            
-            if self.cuda_available:
-                self.cuda_version = self.torch.version.cuda
-                self.cudnn_version = self.torch.backends.cudnn.version()
-                self.gpu_count = self.torch.cuda.device_count()
-                
-                self.logger.info(f"CUDA available: {self.cuda_available}")
-                self.logger.info(f"CUDA version: {self.cuda_version}")
-                self.logger.info(f"cuDNN version: {self.cudnn_version}")
-                self.logger.info(f"GPU count: {self.gpu_count}")
-            else:
-                self.logger.warning("CUDA not available")
-                
-        except Exception as e:
-            self.logger.error(f"Error detecting CUDA: {e}")
-            self.cuda_available = False
-    
-    def _detect_gpus(self) -> None:
-        """Detect individual GPU information."""
-        if not self.cuda_available:
-            return
-        
-        try:
-            for i in range(self.gpu_count):
-                gpu_info = self._get_gpu_info(i)
-                self.gpu_info.append(gpu_info)
-                
-        except Exception as e:
-            self.logger.error(f"Error detecting GPU information: {e}")
-    
-    def _get_gpu_info(self, gpu_id: int) -> GPUInfo:
-        """Get detailed information about a specific GPU."""
-        if not self.cuda_available:
-            raise RuntimeError("CUDA not available")
-        
-        try:
-            # Get GPU properties
-            props = self.torch.cuda.get_device_properties(gpu_id)
-            
-            # Get memory information
-            memory_total = props.total_memory // (1024 * 1024)  # Convert to MB
-            memory_free = self.torch.cuda.memory_reserved(gpu_id) // (1024 * 1024)
-            memory_used = self.torch.cuda.memory_allocated(gpu_id) // (1024 * 1024)
-            
-            # Get utilization (requires nvidia-ml-py)
-            utilization = self._get_gpu_utilization(gpu_id)
-            
-            # Get temperature and power (requires nvidia-ml-py)
-            temperature, power_draw = self._get_gpu_thermal_info(gpu_id)
-            
-            return GPUInfo(
-                id=gpu_id,
-                name=props.name,
-                memory_total=memory_total,
-                memory_free=memory_free,
-                memory_used=memory_used,
-                utilization=utilization,
-                temperature=temperature,
-                power_draw=power_draw,
-                compute_capability=(props.major, props.minor)
-            )
-            
-        except Exception as e:
-            self.logger.error(f"Error getting GPU {gpu_id} info: {e}")
-            return GPUInfo(
-                id=gpu_id,
-                name="Unknown",
-                memory_total=0,
-                memory_free=0,
-                memory_used=0,
-                utilization=0.0
-            )
-    
-    def _get_gpu_utilization(self, gpu_id: int) -> float:
-        """Get GPU utilization percentage."""
-        try:
-            import pynvml
-            pynvml.nvmlInit()
-            handle = pynvml.nvmlDeviceGetHandleByIndex(gpu_id)
-            utilization = pynvml.nvmlDeviceGetUtilizationRates(handle)
-            return float(utilization.gpu)
-        except ImportError:
-            self.logger.debug("pynvml not available for GPU utilization")
-            return 0.0
-        except Exception as e:
-            self.logger.debug(f"Error getting GPU utilization: {e}")
-            return 0.0
-    
-    def _get_gpu_thermal_info(self, gpu_id: int) -> Tuple[Optional[float], Optional[float]]:
-        """Get GPU temperature and power draw."""
-        try:
-            import pynvml
-            pynvml.nvmlInit()
-            handle = pynvml.nvmlDeviceGetHandleByIndex(gpu_id)
-            
-            # Get temperature
-            temperature = pynvml.nvmlDeviceGetTemperature(handle, pynvml.NVML_TEMPERATURE_GPU)
-            
-            # Get power draw
-            power_draw = pynvml.nvmlDeviceGetPowerUsage(handle) / 1000.0  # Convert to watts
-            
-            return float(temperature), float(power_draw)
-            
-        except ImportError:
-            self.logger.debug("pynvml not available for thermal info")
-            return None, None
-        except Exception as e:
-            self.logger.debug(f"Error getting GPU thermal info: {e}")
-            return None, None
-    
-    def _log_gpu_status(self) -> None:
-        """Log comprehensive GPU status."""
-        self.logger.info("=== GPU Status ===")
-        self.logger.info(f"PyTorch available: {self.torch_available}")
-        self.logger.info(f"CUDA available: {self.cuda_available}")
+    def __init__(self):
+        """Initialize GPU Manager"""
+        self.cuda_available = torch.cuda.is_available()
+        self.device_count = 0
+        self.devices = []
         
         if self.cuda_available:
-            self.logger.info(f"CUDA version: {self.cuda_version}")
-            self.logger.info(f"GPU count: {self.gpu_count}")
+            self.device_count = torch.cuda.device_count()
             
-            for i, gpu in enumerate(self.gpu_info):
-                self.logger.info(f"GPU {i}: {gpu.name}")
-                self.logger.info(f"  Memory: {gpu.memory_used}/{gpu.memory_total} MB")
-                self.logger.info(f"  Utilization: {gpu.utilization:.1f}%")
-                if gpu.temperature:
-                    self.logger.info(f"  Temperature: {gpu.temperature:.1f}°C")
-                if gpu.power_draw:
-                    self.logger.info(f"  Power: {gpu.power_draw:.1f}W")
-                if gpu.compute_capability:
-                    self.logger.info(f"  Compute Capability: {gpu.compute_capability[0]}.{gpu.compute_capability[1]}")
-        
-        self.logger.info("==================")
+            # Initialize NVML for detailed GPU info
+            try:
+                nvml.nvmlInit()
+                self.nvml_available = True
+            except Exception as e:
+                logger.warning(f"NVML initialization failed: {e}")
+                self.nvml_available = False
+            
+            self._detect_devices()
+        else:
+            logger.warning("CUDA not available. CPU will be used.")
     
-    def get_optimal_device(self, memory_required: Optional[int] = None) -> str:
-        """
-        Get the optimal device for computation.
+    def _detect_devices(self):
+        """Detect and store information about available GPUs"""
+        self.devices = []
+        
+        for i in range(self.device_count):
+            device_info = self._get_device_info(i)
+            self.devices.append(device_info)
+            
+            logger.info(
+                f"GPU {i}: {device_info.name} - "
+                f"Memory: {device_info.free_memory / 1e9:.1f}GB free / "
+                f"{device_info.total_memory / 1e9:.1f}GB total"
+            )
+    
+    def _get_device_info(self, device_index: int) -> GPUInfo:
+        """Get detailed information about a specific GPU
         
         Args:
-            memory_required: Required memory in MB
+            device_index: GPU device index
             
         Returns:
-            Device string (e.g., 'cuda:0', 'cpu')
+            GPUInfo object with device details
+        """
+        # Basic PyTorch info
+        torch.cuda.set_device(device_index)
+        name = torch.cuda.get_device_name(device_index)
+        total_memory = torch.cuda.get_device_properties(device_index).total_memory
+        
+        # Memory info
+        allocated = torch.cuda.memory_allocated(device_index)
+        reserved = torch.cuda.memory_reserved(device_index)
+        free_memory = total_memory - reserved
+        
+        # Default values
+        temperature = 0.0
+        utilization = 0.0
+        power_draw = 0.0
+        power_limit = 0.0
+        compute_capability = (0, 0)
+        
+        # Detailed NVML info if available
+        if self.nvml_available:
+            try:
+                handle = nvml.nvmlDeviceGetHandleByIndex(device_index)
+                
+                # Temperature
+                temperature = nvml.nvmlDeviceGetTemperature(
+                    handle, nvml.NVML_TEMPERATURE_GPU
+                )
+                
+                # Utilization
+                util = nvml.nvmlDeviceGetUtilizationRates(handle)
+                utilization = util.gpu
+                
+                # Power
+                power_draw = nvml.nvmlDeviceGetPowerUsage(handle) / 1000.0  # mW to W
+                power_limit = nvml.nvmlDeviceGetPowerManagementLimit(handle) / 1000.0
+                
+                # Compute capability
+                major, minor = nvml.nvmlDeviceGetCudaComputeCapability(handle)
+                compute_capability = (major, minor)
+                
+            except Exception as e:
+                logger.debug(f"Error getting NVML info for GPU {device_index}: {e}")
+        
+        return GPUInfo(
+            index=device_index,
+            name=name,
+            total_memory=total_memory,
+            free_memory=free_memory,
+            used_memory=allocated,
+            temperature=temperature,
+            utilization=utilization,
+            power_draw=power_draw,
+            power_limit=power_limit,
+            compute_capability=compute_capability
+        )
+    
+    def get_optimal_device(self, min_memory_gb: float = 2.0) -> Optional[int]:
+        """Get the optimal GPU device based on available memory
+        
+        Args:
+            min_memory_gb: Minimum required free memory in GB
+            
+        Returns:
+            Device index or None if no suitable device found
         """
         if not self.cuda_available:
-            self.logger.info("Using CPU (CUDA not available)")
-            return "cpu"
+            return None
         
-        if self.gpu_count == 0:
-            self.logger.info("Using CPU (no GPUs available)")
-            return "cpu"
+        # Update device info
+        self._detect_devices()
         
-        # Find best GPU based on available memory
-        best_gpu = 0
-        best_free_memory = 0
+        # Find devices with enough memory
+        suitable_devices = [
+            d for d in self.devices
+            if d.free_memory >= min_memory_gb * 1e9
+        ]
         
-        for i, gpu in enumerate(self.gpu_info):
-            free_memory = gpu.memory_total - gpu.memory_used
+        if not suitable_devices:
+            logger.warning(f"No GPU with {min_memory_gb}GB free memory available")
+            return None
+        
+        # Sort by free memory (descending) and return the best
+        suitable_devices.sort(key=lambda d: d.free_memory, reverse=True)
+        best_device = suitable_devices[0]
+        
+        logger.info(f"Selected GPU {best_device.index}: {best_device.name}")
+        return best_device.index
+    
+    def set_device(self, device_index: Optional[int] = None) -> torch.device:
+        """Set the active CUDA device
+        
+        Args:
+            device_index: GPU index. If None, uses optimal device.
             
-            if memory_required and free_memory < memory_required:
-                continue
-            
-            if free_memory > best_free_memory:
-                best_free_memory = free_memory
-                best_gpu = i
+        Returns:
+            torch.device object
+        """
+        if not self.cuda_available:
+            device = torch.device("cpu")
+            logger.info("Using CPU device")
+            return device
         
-        if memory_required and best_free_memory < memory_required:
-            self.logger.warning(f"Insufficient GPU memory. Required: {memory_required}MB, Available: {best_free_memory}MB")
-            return "cpu"
+        if device_index is None:
+            device_index = self.get_optimal_device()
         
-        device = f"cuda:{best_gpu}"
-        self.logger.info(f"Using device: {device} (Free memory: {best_free_memory}MB)")
+        if device_index is None:
+            device = torch.device("cpu")
+            logger.warning("No suitable GPU found. Using CPU.")
+        else:
+            torch.cuda.set_device(device_index)
+            device = torch.device(f"cuda:{device_index}")
+            logger.info(f"Using GPU {device_index}")
+        
         return device
     
-    def get_available_devices(self) -> List[str]:
-        """
-        Get list of available devices.
-        
-        Returns:
-            List of device strings
-        """
-        devices = ["cpu"]
-        
-        if self.cuda_available:
-            devices.extend([f"cuda:{i}" for i in range(self.gpu_count)])
-        
-        return devices
-    
-    def set_device(self, device: str) -> None:
-        """
-        Set the current device for PyTorch operations.
+    def get_memory_summary(self, device_index: int = None) -> Dict[str, float]:
+        """Get memory usage summary for a device
         
         Args:
-            device: Device string (e.g., 'cuda:0', 'cpu')
-        """
-        if not self.torch_available:
-            self.logger.warning("PyTorch not available, cannot set device")
-            return
-        
-        try:
-            if device.startswith("cuda") and not self.cuda_available:
-                self.logger.warning(f"CUDA not available, falling back to CPU")
-                device = "cpu"
+            device_index: GPU index. If None, uses current device.
             
-            self.torch.cuda.set_device(device)
-            self.logger.info(f"Set device to: {device}")
-            
-        except Exception as e:
-            self.logger.error(f"Error setting device to {device}: {e}")
-            raise
-    
-    def optimize_memory(self, enable_memory_fraction: bool = True, memory_fraction: float = 0.9) -> None:
-        """
-        Optimize GPU memory usage.
-        
-        Args:
-            enable_memory_fraction: Whether to limit memory usage
-            memory_fraction: Fraction of GPU memory to use
-        """
-        if not self.cuda_available:
-            self.logger.warning("CUDA not available, cannot optimize memory")
-            return
-        
-        try:
-            # Set memory fraction for each GPU
-            if enable_memory_fraction:
-                for i in range(self.gpu_count):
-                    total_memory = self.gpu_info[i].memory_total * 1024 * 1024  # Convert to bytes
-                    memory_limit = int(total_memory * memory_fraction)
-                    
-                    # PyTorch doesn't have direct memory fraction setting
-                    # but we can use CUDA_VISIBLE_DEVICES or set memory limit
-                    self.logger.info(f"GPU {i}: Setting memory limit to {memory_limit // (1024*1024)}MB")
-            
-            # Enable memory caching optimization
-            if hasattr(self.torch.cuda, 'empty_cache'):
-                self.torch.cuda.empty_cache()
-                self.logger.info("Cleared CUDA cache")
-            
-            # Set memory allocation strategy
-            os.environ['PYTORCH_CUDA_ALLOC_CONF'] = 'max_split_size_mb:512'
-            
-        except Exception as e:
-            self.logger.error(f"Error optimizing memory: {e}")
-    
-    def clear_memory(self) -> None:
-        """Clear GPU memory cache."""
-        if not self.cuda_available:
-            return
-        
-        try:
-            if hasattr(self.torch.cuda, 'empty_cache'):
-                self.torch.cuda.empty_cache()
-                self.logger.info("Cleared CUDA memory cache")
-        except Exception as e:
-            self.logger.error(f"Error clearing memory: {e}")
-    
-    def monitor_memory(self) -> Dict[str, Any]:
-        """
-        Monitor current GPU memory usage.
-        
         Returns:
-            Dictionary with memory statistics
+            Dictionary with memory statistics in GB
         """
         if not self.cuda_available:
-            return {"cuda_available": False}
+            return {"error": "CUDA not available"}
         
-        memory_stats = {"cuda_available": True, "gpus": []}
+        if device_index is None:
+            device_index = torch.cuda.current_device()
         
-        try:
-            for i in range(self.gpu_count):
-                allocated = self.torch.cuda.memory_allocated(i)
-                reserved = self.torch.cuda.memory_reserved(i)
-                total = self.torch.cuda.get_device_properties(i).total_memory
-                
-                gpu_stats = {
-                    "id": i,
-                    "allocated_mb": allocated // (1024 * 1024),
-                    "reserved_mb": reserved // (1024 * 1024),
-                    "total_mb": total // (1024 * 1024),
-                    "utilization_percent": (allocated / total) * 100
-                }
-                
-                memory_stats["gpus"].append(gpu_stats)
-            
-        except Exception as e:
-            self.logger.error(f"Error monitoring memory: {e}")
-        
-        return memory_stats
-    
-    def get_system_info(self) -> Dict[str, Any]:
-        """
-        Get comprehensive system information.
-        
-        Returns:
-            Dictionary with system information
-        """
-        info = {
-            "platform": platform.platform(),
-            "python_version": sys.version,
-            "cpu_count": psutil.cpu_count(),
-            "memory_total_gb": psutil.virtual_memory().total // (1024**3),
-            "cuda_available": self.cuda_available,
-            "gpu_count": self.gpu_count,
+        stats = {
+            "allocated_gb": torch.cuda.memory_allocated(device_index) / 1e9,
+            "reserved_gb": torch.cuda.memory_reserved(device_index) / 1e9,
+            "free_gb": (
+                torch.cuda.get_device_properties(device_index).total_memory -
+                torch.cuda.memory_reserved(device_index)
+            ) / 1e9,
+            "total_gb": torch.cuda.get_device_properties(device_index).total_memory / 1e9
         }
         
-        if self.torch_available:
-            info["pytorch_version"] = self.torch.__version__
-            info["pytorch_cuda_version"] = self.torch.version.cuda
-        
-        if self.cuda_available:
-            info["gpus"] = [
-                {
-                    "id": gpu.id,
-                    "name": gpu.name,
-                    "memory_total_mb": gpu.memory_total,
-                    "compute_capability": gpu.compute_capability
-                }
-                for gpu in self.gpu_info
-            ]
-        
-        return info
+        return stats
     
-    @contextmanager
-    def device_context(self, device: str):
-        """Context manager for temporary device switching."""
-        if not self.torch_available:
-            yield
-            return
-        
-        original_device = self.torch.cuda.current_device() if self.cuda_available else None
-        
-        try:
-            self.set_device(device)
-            yield
-        finally:
-            if original_device is not None:
-                self.set_device(f"cuda:{original_device}")
-    
-    def benchmark_device(self, device: str, size: Tuple[int, ...] = (1000, 1000)) -> Dict[str, float]:
-        """
-        Benchmark device performance.
+    def optimize_batch_size(
+        self,
+        model: torch.nn.Module,
+        input_shape: Tuple[int, ...],
+        initial_batch_size: int = 32,
+        safety_factor: float = 0.9
+    ) -> int:
+        """Find optimal batch size for a model
         
         Args:
-            device: Device to benchmark
-            size: Tensor size for benchmarking
+            model: PyTorch model
+            input_shape: Shape of single input (without batch dimension)
+            initial_batch_size: Starting batch size for search
+            safety_factor: Memory safety factor (0-1)
             
         Returns:
-            Dictionary with benchmark results
+            Optimal batch size
         """
-        if not self.torch_available:
-            return {"error": "PyTorch not available"}
+        if not self.cuda_available:
+            return initial_batch_size
         
-        try:
-            import time
+        device = next(model.parameters()).device
+        
+        # Binary search for optimal batch size
+        min_batch = 1
+        max_batch = initial_batch_size * 4
+        optimal_batch = initial_batch_size
+        
+        while min_batch <= max_batch:
+            batch_size = (min_batch + max_batch) // 2
             
-            # Create test tensors
-            a = self.torch.randn(size, device=device)
-            b = self.torch.randn(size, device=device)
-            
-            # Warmup
-            for _ in range(10):
-                c = self.torch.matmul(a, b)
-            
-            # Benchmark matrix multiplication
-            start_time = time.time()
-            for _ in range(100):
-                c = self.torch.matmul(a, b)
-            
-            if device.startswith("cuda"):
-                self.torch.cuda.synchronize()
-            
-            end_time = time.time()
-            
-            matmul_time = (end_time - start_time) / 100
-            
-            # Benchmark memory transfer (if GPU)
-            transfer_time = 0.0
-            if device.startswith("cuda"):
-                cpu_tensor = self.torch.randn(size)
+            try:
+                # Clear cache
+                torch.cuda.empty_cache()
                 
-                start_time = time.time()
-                gpu_tensor = cpu_tensor.to(device)
-                self.torch.cuda.synchronize()
-                end_time = time.time()
+                # Try forward pass
+                dummy_input = torch.randn(batch_size, *input_shape).to(device)
+                with torch.no_grad():
+                    _ = model(dummy_input)
                 
-                transfer_time = end_time - start_time
+                # Check memory usage
+                memory_used = torch.cuda.memory_allocated(device)
+                memory_total = torch.cuda.get_device_properties(device).total_memory
+                
+                if memory_used < memory_total * safety_factor:
+                    optimal_batch = batch_size
+                    min_batch = batch_size + 1
+                else:
+                    max_batch = batch_size - 1
+                    
+            except RuntimeError as e:
+                if "out of memory" in str(e):
+                    max_batch = batch_size - 1
+                else:
+                    raise e
+            finally:
+                torch.cuda.empty_cache()
+        
+        logger.info(f"Optimal batch size: {optimal_batch}")
+        return optimal_batch
+    
+    def enable_mixed_precision(self) -> bool:
+        """Check and enable mixed precision training if supported
+        
+        Returns:
+            True if mixed precision is supported
+        """
+        if not self.cuda_available:
+            return False
+        
+        # Check compute capability
+        device_info = self._get_device_info(torch.cuda.current_device())
+        major, minor = device_info.compute_capability
+        
+        # Mixed precision requires compute capability >= 7.0
+        if major >= 7:
+            logger.info(
+                f"Mixed precision training enabled "
+                f"(Compute capability {major}.{minor})"
+            )
+            return True
+        else:
+            logger.warning(
+                f"Mixed precision not supported "
+                f"(Compute capability {major}.{minor} < 7.0)"
+            )
+            return False
+    
+    def cleanup(self):
+        """Cleanup GPU resources"""
+        if self.cuda_available:
+            torch.cuda.empty_cache()
             
-            return {
-                "device": device,
-                "matmul_time_ms": matmul_time * 1000,
-                "transfer_time_ms": transfer_time * 1000,
-                "tensor_size": size
-            }
-            
-        except Exception as e:
-            return {"error": str(e)}
+        if self.nvml_available:
+            try:
+                nvml.nvmlShutdown()
+            except:
+                pass
 
 
 # Global GPU manager instance
-_gpu_manager: Optional[GPUManager] = None
+_gpu_manager = None
 
 
 def get_gpu_manager() -> GPUManager:
-    """Get the global GPU manager instance."""
+    """Get global GPU manager instance
+    
+    Returns:
+        GPUManager instance
+    """
     global _gpu_manager
     if _gpu_manager is None:
         _gpu_manager = GPUManager()
     return _gpu_manager
 
 
-def setup_gpu(device: str = "auto", optimize_memory: bool = True) -> str:
-    """
-    Setup GPU for PI-HMARL experiments.
+def auto_select_device(min_memory_gb: float = 2.0) -> torch.device:
+    """Automatically select best available device
     
     Args:
-        device: Device to use ('auto', 'cpu', 'cuda:0', etc.)
-        optimize_memory: Whether to optimize memory usage
+        min_memory_gb: Minimum required GPU memory in GB
         
     Returns:
-        Selected device string
+        torch.device object
     """
-    gpu_manager = get_gpu_manager()
+    manager = get_gpu_manager()
+    return manager.set_device()
+
+
+def get_device_info() -> List[GPUInfo]:
+    """Get information about all available GPUs
     
-    if device == "auto":
-        device = gpu_manager.get_optimal_device()
-    
-    gpu_manager.set_device(device)
-    
-    if optimize_memory:
-        gpu_manager.optimize_memory()
-    
-    return device
+    Returns:
+        List of GPUInfo objects
+    """
+    manager = get_gpu_manager()
+    return manager.devices
 
 
-def get_device_info() -> Dict[str, Any]:
-    """Get device information."""
-    return get_gpu_manager().get_system_info()
+def log_gpu_memory():
+    """Log current GPU memory usage"""
+    if torch.cuda.is_available():
+        for i in range(torch.cuda.device_count()):
+            allocated = torch.cuda.memory_allocated(i) / 1e9
+            reserved = torch.cuda.memory_reserved(i) / 1e9
+            logger.info(
+                f"GPU {i} memory: {allocated:.2f}GB allocated, "
+                f"{reserved:.2f}GB reserved"
+            )
 
 
-def clear_gpu_memory() -> None:
-    """Clear GPU memory cache."""
-    get_gpu_manager().clear_memory()
-
-
-def monitor_gpu_memory() -> Dict[str, Any]:
-    """Monitor GPU memory usage."""
-    return get_gpu_manager().monitor_memory()
+def clear_gpu_cache():
+    """Clear GPU memory cache"""
+    if torch.cuda.is_available():
+        torch.cuda.empty_cache()
+        logger.info("GPU cache cleared")
+EOF < /dev/null

@@ -1,85 +1,68 @@
-# Multi-stage Dockerfile for PI-HMARL
-FROM nvidia/cuda:11.8-devel-ubuntu22.04 AS base
+# Use NVIDIA CUDA base image for GPU support
+FROM nvidia/cuda:11.8.0-cudnn8-devel-ubuntu22.04
 
 # Set environment variables
 ENV DEBIAN_FRONTEND=noninteractive
 ENV PYTHONUNBUFFERED=1
-ENV CUDA_VISIBLE_DEVICES=0
-ENV PYTHONPATH=/app:$PYTHONPATH
+ENV CUDA_HOME=/usr/local/cuda
+ENV PATH="${CUDA_HOME}/bin:${PATH}"
+ENV LD_LIBRARY_PATH="${CUDA_HOME}/lib64:${LD_LIBRARY_PATH}"
 
 # Install system dependencies
 RUN apt-get update && apt-get install -y \
     python3.10 \
     python3.10-dev \
     python3-pip \
-    python3-venv \
     git \
-    curl \
     wget \
-    build-essential \
-    cmake \
+    curl \
     libgl1-mesa-glx \
     libglib2.0-0 \
     libsm6 \
     libxext6 \
     libxrender-dev \
     libgomp1 \
+    libglu1-mesa \
     libglu1-mesa-dev \
-    libglew-dev \
+    libgl1-mesa-dev \
     libosmesa6-dev \
     patchelf \
-    xvfb \
+    cmake \
+    swig \
     && rm -rf /var/lib/apt/lists/*
 
-# Create symlink for python
-RUN ln -sf /usr/bin/python3.10 /usr/bin/python
+# Install Python dependencies
+RUN python3 -m pip install --upgrade pip setuptools wheel
 
-# Upgrade pip
-RUN python -m pip install --upgrade pip setuptools wheel
+# Set working directory
+WORKDIR /workspace/pi-hmarl
+
+# Copy requirements first for better caching
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
 
 # Install PyTorch with CUDA support
 RUN pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu118
 
-# Set working directory
-WORKDIR /app
-
-# Copy requirements and install Python dependencies
-COPY requirements.txt .
-RUN pip install -r requirements.txt
-
-# Install MuJoCo
-RUN mkdir -p /root/.mujoco && \
-    wget https://github.com/deepmind/mujoco/releases/download/2.3.7/mujoco-2.3.7-linux-x86_64.tar.gz -O /tmp/mujoco.tar.gz && \
-    tar -xzf /tmp/mujoco.tar.gz -C /root/.mujoco && \
-    mv /root/.mujoco/mujoco-2.3.7 /root/.mujoco/mujoco237 && \
-    rm /tmp/mujoco.tar.gz
-
-# Set MuJoCo environment variables
-ENV MUJOCO_PY_MUJOCO_PATH=/root/.mujoco/mujoco237
-ENV LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/root/.mujoco/mujoco237/bin
-
-# Copy project files
+# Copy the entire project
 COPY . .
 
 # Install the package in development mode
 RUN pip install -e .
 
 # Create necessary directories
-RUN mkdir -p logs data/raw data/processed data/results experiments
+RUN mkdir -p /workspace/pi-hmarl/experiments \
+    /workspace/pi-hmarl/data/real_parameters \
+    /workspace/pi-hmarl/data/synthetic \
+    /workspace/pi-hmarl/logs
 
-# Set up display for headless environments
-ENV DISPLAY=:99
+# Set up environment for MuJoCo
+ENV LD_LIBRARY_PATH="${LD_LIBRARY_PATH}:/root/.mujoco/mujoco210/bin"
+ENV MUJOCO_GL=egl
 
-# Expose ports for Jupyter, TensorBoard, and Ray dashboard
-EXPOSE 8888 6006 8265
+# Expose ports for TensorBoard and other services
+EXPOSE 6006 8265 8888
 
-# Create startup script
-RUN echo '#!/bin/bash\n\
-# Start virtual display\n\
-Xvfb :99 -screen 0 1024x768x24 > /dev/null 2>&1 &\n\
-\n\
-# Execute the command\n\
-exec "$@"' > /app/entrypoint.sh && chmod +x /app/entrypoint.sh
-
-ENTRYPOINT ["/app/entrypoint.sh"]
-CMD ["bash"]
+# Set up entrypoint
+ENTRYPOINT ["/bin/bash"]
+EOF < /dev/null
