@@ -1,0 +1,81 @@
+version: '3.8'
+
+services:
+  pi-hmarl:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: pi-hmarl-dev
+    volumes:
+      - .:/app
+      - ./data:/app/data
+      - ./logs:/app/logs
+      - ./experiments:/app/experiments
+      - /tmp/.X11-unix:/tmp/.X11-unix:rw
+    environment:
+      - DISPLAY=${DISPLAY}
+      - WANDB_API_KEY=${WANDB_API_KEY}
+      - CUDA_VISIBLE_DEVICES=${CUDA_VISIBLE_DEVICES:-0}
+      - PYTHONPATH=/app
+    ports:
+      - "8888:8888"  # Jupyter
+      - "6006:6006"  # TensorBoard
+      - "8265:8265"  # Ray Dashboard
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]
+    stdin_open: true
+    tty: true
+    command: bash
+
+  jupyter:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: pi-hmarl-jupyter
+    volumes:
+      - .:/app
+      - ./data:/app/data
+      - ./logs:/app/logs
+      - ./experiments:/app/experiments
+    environment:
+      - WANDB_API_KEY=${WANDB_API_KEY}
+      - CUDA_VISIBLE_DEVICES=${CUDA_VISIBLE_DEVICES:-0}
+      - PYTHONPATH=/app
+    ports:
+      - "8888:8888"
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]
+    command: >
+      bash -c "
+        pip install jupyter notebook ipywidgets &&
+        jupyter notebook --ip=0.0.0.0 --port=8888 --no-browser --allow-root --NotebookApp.token='' --NotebookApp.password=''
+      "
+
+  tensorboard:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: pi-hmarl-tensorboard
+    volumes:
+      - ./logs:/app/logs
+      - ./experiments:/app/experiments
+    ports:
+      - "6006:6006"
+    command: >
+      bash -c "
+        tensorboard --logdir=/app/logs --host=0.0.0.0 --port=6006
+      "
+
+networks:
+  default:
+    driver: bridge

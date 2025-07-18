@@ -1,0 +1,415 @@
+# Default Configuration for Physics-Informed Hierarchical Multi-Agent Reinforcement Learning
+# This configuration file defines all the parameters for PI-HMARL experiments
+
+# Experiment Settings
+experiment:
+  name: "pi_hmarl_experiment"
+  description: "Physics-Informed Hierarchical Multi-Agent Reinforcement Learning"
+  tags: ["physics", "multi-agent", "hierarchical", "reinforcement-learning"]
+  seed: 42
+  deterministic: false
+  
+# Environment Configuration
+environment:
+  name: "CartPole-v1"
+  max_episode_steps: 500
+  num_envs: 1
+  env_kwargs: {}
+  
+  # Physics simulation settings
+  physics:
+    enable_physics: true
+    physics_engine: "mujoco"  # options: mujoco, pybullet, custom
+    timestep: 0.01
+    gravity: [0, 0, -9.81]
+    damping: 0.1
+    
+  # Environment wrappers
+  wrappers:
+    - name: "NormalizeObservation"
+      enabled: true
+    - name: "NormalizeReward"
+      enabled: true
+    - name: "ClipAction"
+      enabled: true
+
+# Multi-Agent Configuration
+multi_agent:
+  num_agents: 2
+  agent_types: ["high_level", "low_level"]
+  
+  # Communication settings
+  communication:
+    enabled: true
+    communication_radius: 10.0
+    message_size: 32
+    communication_frequency: 1  # every n steps
+    
+  # Hierarchical structure
+  hierarchy:
+    levels: 2
+    high_level_frequency: 10  # high-level actions every n steps
+    low_level_frequency: 1
+    
+  # Agent-specific configurations
+  agents:
+    high_level:
+      observation_space_size: 128
+      action_space_size: 8
+      hidden_layers: [256, 256]
+      
+    low_level:
+      observation_space_size: 64
+      action_space_size: 4
+      hidden_layers: [128, 128]
+
+# Physics-Informed Learning Configuration
+physics_informed:
+  enabled: true
+  
+  # Physics loss configuration
+  physics_loss:
+    weight: 0.1
+    type: "mse"  # options: mse, mae, huber
+    
+  # Physical constraints
+  constraints:
+    energy_conservation: true
+    momentum_conservation: true
+    force_balance: true
+    
+  # Physics regularization
+  regularization:
+    enabled: true
+    lambda_energy: 0.01
+    lambda_momentum: 0.01
+    lambda_force: 0.01
+    
+  # Physics model configuration
+  physics_model:
+    type: "neural_ode"  # options: neural_ode, physics_net, hybrid
+    hidden_layers: [64, 64]
+    activation: "tanh"
+    
+# Training Configuration
+training:
+  algorithm: "PPO"  # options: PPO, SAC, TD3, MADDPG
+  
+  # Training parameters
+  num_episodes: 1000
+  max_steps_per_episode: 500
+  batch_size: 32
+  learning_rate: 3e-4
+  gamma: 0.99
+  gae_lambda: 0.95
+  
+  # PPO specific
+  ppo:
+    clip_epsilon: 0.2
+    entropy_coefficient: 0.01
+    value_loss_coefficient: 0.5
+    max_grad_norm: 0.5
+    n_epochs: 10
+    
+  # SAC specific
+  sac:
+    tau: 0.005
+    alpha: 0.2
+    automatic_entropy_tuning: true
+    
+  # Experience replay
+  replay_buffer:
+    size: 100000
+    prioritized: false
+    alpha: 0.6
+    beta: 0.4
+    
+  # Target network updates
+  target_update_frequency: 100
+  soft_update_tau: 0.005
+  
+  # Exploration
+  exploration:
+    type: "epsilon_greedy"  # options: epsilon_greedy, gaussian_noise, ou_noise
+    epsilon_start: 1.0
+    epsilon_end: 0.01
+    epsilon_decay: 0.995
+    
+    # Gaussian noise parameters
+    gaussian_noise:
+      std: 0.1
+      decay: 0.999
+      
+    # Ornstein-Uhlenbeck noise parameters
+    ou_noise:
+      theta: 0.15
+      sigma: 0.2
+      dt: 0.01
+
+# Network Architecture
+network:
+  # Actor network
+  actor:
+    type: "mlp"  # options: mlp, cnn, transformer
+    hidden_layers: [256, 256]
+    activation: "relu"
+    output_activation: "tanh"
+    initialization: "xavier"
+    
+  # Critic network
+  critic:
+    type: "mlp"
+    hidden_layers: [256, 256]
+    activation: "relu"
+    output_activation: "linear"
+    initialization: "xavier"
+    
+  # Shared layers
+  shared_layers:
+    enabled: false
+    hidden_layers: [128]
+    
+  # Normalization
+  normalization:
+    batch_norm: false
+    layer_norm: false
+    
+  # Dropout
+  dropout:
+    enabled: false
+    rate: 0.1
+
+# Optimization Configuration
+optimization:
+  optimizer: "Adam"  # options: Adam, RMSprop, SGD
+  
+  # Adam parameters
+  adam:
+    betas: [0.9, 0.999]
+    eps: 1e-8
+    weight_decay: 0.0
+    
+  # Learning rate scheduling
+  lr_schedule:
+    type: "constant"  # options: constant, linear, exponential, cosine
+    warmup_steps: 0
+    decay_steps: 1000
+    decay_rate: 0.95
+    
+  # Gradient clipping
+  gradient_clipping:
+    enabled: true
+    max_norm: 0.5
+    norm_type: 2
+
+# Evaluation Configuration
+evaluation:
+  frequency: 100  # evaluate every n episodes
+  num_episodes: 10
+  deterministic: true
+  render: false
+  
+  # Metrics to track
+  metrics:
+    - "episode_reward"
+    - "episode_length"
+    - "success_rate"
+    - "physics_loss"
+    - "communication_efficiency"
+    
+  # Early stopping
+  early_stopping:
+    enabled: true
+    patience: 100
+    min_delta: 0.01
+    metric: "episode_reward"
+    mode: "max"
+
+# Logging Configuration
+logging:
+  level: "INFO"  # options: DEBUG, INFO, WARNING, ERROR, CRITICAL
+  
+  # Console logging
+  console:
+    enabled: true
+    format: "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+    
+  # File logging
+  file:
+    enabled: true
+    path: "logs"
+    max_size: 10485760  # 10MB
+    backup_count: 5
+    
+  # Structured logging
+  structured:
+    enabled: true
+    format: "json"
+    
+  # Experiment tracking
+  tracking:
+    wandb:
+      enabled: false
+      project: "pi-hmarl"
+      entity: null
+      tags: []
+      
+    tensorboard:
+      enabled: true
+      log_dir: "logs/tensorboard"
+      
+    mlflow:
+      enabled: false
+      tracking_uri: "http://localhost:5000"
+      experiment_name: "pi-hmarl"
+
+# Checkpointing Configuration
+checkpointing:
+  enabled: true
+  frequency: 100  # save every n episodes
+  path: "checkpoints"
+  keep_latest: 5
+  
+  # Best model saving
+  save_best:
+    enabled: true
+    metric: "episode_reward"
+    mode: "max"
+    
+  # Resume training
+  resume:
+    enabled: false
+    checkpoint_path: null
+
+# Device Configuration
+device:
+  type: "auto"  # options: auto, cpu, cuda, cuda:0, cuda:1, etc.
+  
+  # CUDA settings
+  cuda:
+    deterministic: false
+    benchmark: true
+    
+  # Memory optimization
+  memory:
+    optimize: true
+    fraction: 0.9
+    allow_growth: true
+
+# Hyperparameter Optimization
+hyperparameter_optimization:
+  enabled: false
+  framework: "optuna"  # options: optuna, ray_tune, hyperopt
+  
+  # Optuna settings
+  optuna:
+    n_trials: 100
+    direction: "maximize"
+    sampler: "TPESampler"
+    pruner: "MedianPruner"
+    
+  # Search space
+  search_space:
+    learning_rate:
+      type: "loguniform"
+      low: 1e-5
+      high: 1e-2
+      
+    batch_size:
+      type: "choice"
+      choices: [16, 32, 64, 128]
+      
+    hidden_layers:
+      type: "choice"
+      choices: [[64, 64], [128, 128], [256, 256]]
+      
+    gamma:
+      type: "uniform"
+      low: 0.9
+      high: 0.999
+
+# Debugging Configuration
+debug:
+  enabled: false
+  
+  # Profiling
+  profiling:
+    enabled: false
+    output_path: "profiling"
+    
+  # Visualization
+  visualization:
+    enabled: false
+    save_episodes: false
+    save_path: "visualizations"
+    
+  # Debugging hooks
+  hooks:
+    pre_episode: []
+    post_episode: []
+    pre_step: []
+    post_step: []
+
+# Data Configuration
+data:
+  # Dataset settings
+  dataset:
+    path: "data"
+    format: "hdf5"  # options: hdf5, pickle, json
+    
+  # Data collection
+  collection:
+    enabled: false
+    frequency: 1
+    max_size: 1000000
+    
+  # Data preprocessing
+  preprocessing:
+    normalize: true
+    standardize: false
+    
+  # Data augmentation
+  augmentation:
+    enabled: false
+    techniques: []
+
+# Deployment Configuration
+deployment:
+  # Model export
+  export:
+    enabled: false
+    format: "onnx"  # options: onnx, torchscript, tflite
+    path: "models/exported"
+    
+  # Model serving
+  serving:
+    enabled: false
+    port: 8080
+    host: "0.0.0.0"
+    
+  # Docker deployment
+  docker:
+    enabled: false
+    base_image: "nvidia/cuda:11.8-runtime-ubuntu22.04"
+    
+# Performance Configuration
+performance:
+  # Parallelization
+  parallel:
+    num_workers: 4
+    multiprocessing: true
+    
+  # Vectorization
+  vectorization:
+    enabled: true
+    num_envs: 4
+    
+  # Compilation
+  compilation:
+    jit: false
+    tensorrt: false
+    
+  # Memory management
+  memory_management:
+    garbage_collection: true
+    memory_limit: null
