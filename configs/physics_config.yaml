@@ -1,0 +1,136 @@
+# Physics Configuration for PI-HMARL
+
+physics:
+  # Physics engine settings
+  engine:
+    type: "pybullet"  # pybullet or custom
+    timestep: 0.01  # 100 Hz simulation
+    substeps: 4  # Number of substeps per timestep
+    gravity: [0, 0, -9.81]  # m/s²
+    use_gui: false  # Enable GUI visualization
+    
+  # Collision detection
+  collision:
+    enabled: true
+    margin: 0.01  # Collision detection margin (m)
+    max_contacts: 10  # Max contacts per collision pair
+    restitution: 0.5  # Default coefficient of restitution
+    friction: 0.8  # Default friction coefficient
+    
+  # Aerodynamics
+  aerodynamics:
+    enabled: true
+    air_density: 1.225  # kg/m³ at sea level
+    wind_enabled: true
+    ground_effect_enabled: true
+    ground_effect_height: 5.0  # meters
+    
+  # Environmental factors
+  environment:
+    wind:
+      base_velocity: [0, 0, 0]  # m/s
+      turbulence_intensity: 0.1  # 0-1
+      gust_frequency: 0.1  # Hz
+      shear_coefficient: 0.2
+      
+    weather:
+      temperature: 20.0  # Celsius
+      pressure: 101325.0  # Pa
+      humidity: 0.5  # 0-1
+      visibility: 10000.0  # meters
+      
+  # Vehicle dynamics
+  vehicle:
+    # DJI Mavic 3 parameters
+    dji_mavic_3:
+      mass: 0.895  # kg
+      arm_length: 0.15  # m
+      inertia: [0.01, 0.01, 0.02]  # kg*m²
+      max_thrust_to_weight: 2.5
+      max_velocity: 21.0  # m/s
+      max_acceleration: 10.0  # m/s²
+      max_angular_velocity: 3.14  # rad/s
+      drag_coefficients: [0.5, 0.5, 0.7]
+      reference_area: 0.05  # m²
+      
+    # Parrot Anafi parameters  
+    parrot_anafi:
+      mass: 0.320  # kg
+      arm_length: 0.10  # m
+      inertia: [0.003, 0.003, 0.006]  # kg*m²
+      max_thrust_to_weight: 2.2
+      max_velocity: 16.0  # m/s
+      max_acceleration: 8.0  # m/s²
+      max_angular_velocity: 2.5  # rad/s
+      drag_coefficients: [0.4, 0.4, 0.6]
+      reference_area: 0.03  # m²
+      
+  # Battery models
+  battery:
+    # DJI Intelligent Battery
+    dji_intelligent:
+      nominal_voltage: 15.4  # V
+      capacity: 5.0  # Ah
+      energy_capacity: 77.0  # Wh
+      max_discharge_rate: 10.0  # C
+      internal_resistance: 0.08  # Ohms
+      temp_coefficient: -0.008
+      optimal_temp_range: [10.0, 40.0]  # Celsius
+      
+    # Samsung 18650
+    samsung_18650:
+      nominal_voltage: 3.6  # V
+      capacity: 3.0  # Ah
+      energy_capacity: 10.8  # Wh
+      max_discharge_rate: 15.0  # C
+      internal_resistance: 0.02  # Ohms
+      temp_coefficient: -0.005
+      optimal_temp_range: [15.0, 35.0]  # Celsius
+      
+  # Motor parameters
+  motor:
+    default:
+      max_rpm: 15000
+      kv_rating: 920  # RPM/V
+      resistance: 0.05  # Ohms
+      efficiency: 0.85
+      time_constant: 0.1  # seconds
+      thrust_constant: 8.54858e-06  # N/(rad/s)²
+      moment_constant: 0.016  # Nm/(rad/s)²
+      
+  # Validation settings
+  validation:
+    enabled: true
+    max_velocity: 50.0  # m/s
+    max_acceleration: 20.0  # m/s²
+    max_angular_velocity: 10.0  # rad/s
+    max_angular_acceleration: 20.0  # rad/s²
+    energy_tolerance: 0.01  # 1%
+    momentum_tolerance: 0.01  # 1%
+    
+  # Sensor noise models (for realistic simulation)
+  sensor_noise:
+    position:
+      enabled: true
+      std_dev: 0.1  # meters
+      bias: 0.01
+      
+    velocity:
+      enabled: true
+      std_dev: 0.05  # m/s
+      bias: 0.005
+      
+    acceleration:
+      enabled: true
+      std_dev: 0.1  # m/s²
+      bias: 0.01
+      
+    orientation:
+      enabled: true
+      std_dev: 0.01  # radians
+      bias: 0.001
+      
+    angular_velocity:
+      enabled: true
+      std_dev: 0.05  # rad/s
+      bias: 0.005

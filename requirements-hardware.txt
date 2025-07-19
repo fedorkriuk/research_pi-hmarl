@@ -1,0 +1,32 @@
+# Hardware-specific dependencies for PI-HMARL
+
+# Drone interfaces
+pymavlink>=2.4.0
+
+# Serial communication
+pyserial>=3.5
+
+# ROS integration
+roslibpy>=1.2.0
+
+# Real-time communication
+aiortc>=1.3.0
+
+# Additional hardware libraries (optional)
+# Uncomment as needed:
+
+# For specific drone platforms:
+# dronekit>=2.9.2
+# mavsdk>=1.4.0
+
+# For robot arms:
+# pymodbus>=3.0.0
+# python-can>=4.0.0
+
+# For camera systems:
+# pyrealsense2>=2.50.0
+# pypylon>=2.0.0
+
+# For LIDAR:
+# python-pcl>=0.3.0
+# open3d>=0.15.0
