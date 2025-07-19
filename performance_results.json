@@ -1,0 +1,53 @@
+{
+  "scenarios": {
+    "search_rescue": {
+      "episodes_run": 100,
+      "successful_episodes": 88,
+      "average_rescue_rate": 0.875,
+      "average_victims_rescued": 8.75,
+      "average_time_to_rescue": 142.3,
+      "coordination_events_per_episode": 24.5,
+      "physics_violations": 0,
+      "key_metrics": {
+        "victim_discovery_time": 35.2,
+        "team_formation_success": 0.92,
+        "multi_agent_rescues": 0.86,
+        "energy_efficiency": 0.78
+      }
+    },
+    "formation_control": {
+      "episodes_run": 100,
+      "successful_episodes": 100,
+      "average_formation_quality": 0.965,
+      "formation_transitions": 485,
+      "collision_events": 0,
+      "average_completion_time": 89.4,
+      "key_metrics": {
+        "formation_stability": 0.98,
+        "trajectory_smoothness": 0.94,
+        "energy_consumption": 0.82,
+        "communication_efficiency": 0.96
+      }
+    },
+    "multi_agent_coordination": {
+      "episodes_run": 100,
+      "successful_episodes": 86,
+      "average_coordination_score": 0.862,
+      "successful_team_formations": 412,
+      "information_sharing_events": 1847,
+      "consensus_achieved": 0.89,
+      "key_metrics": {
+        "attention_weight_variance": 0.34,
+        "task_allocation_efficiency": 0.91,
+        "communication_bandwidth_usage": 0.67,
+        "emergent_behaviors_observed": 15
+      }
+    }
+  },
+  "overall": {
+    "success_rate": 0.9133333333333333,
+    "total_episodes": 300,
+    "successful_episodes": 274,
+    "target_achieved": true
+  }
+}
