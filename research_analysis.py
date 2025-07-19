@@ -294,16 +294,16 @@ def main():
     
     # Create visualizations
     fig1 = create_research_overview()
-    fig1.savefig('/Users/fedorkruk/Projects/pi-hmarl/research_overview.png', dpi=300, bbox_inches='tight')
+    fig1.savefig('/Users/fedorkruk/Projects/research_pi-hmarl/research_overview.png', dpi=300, bbox_inches='tight')
     
     fig2 = create_technical_architecture()
-    fig2.savefig('/Users/fedorkruk/Projects/pi-hmarl/technical_architecture.png', dpi=300, bbox_inches='tight')
+    fig2.savefig('/Users/fedorkruk/Projects/research_pi-hmarl/technical_architecture.png', dpi=300, bbox_inches='tight')
     
     fig3 = create_performance_timeline()
-    fig3.savefig('/Users/fedorkruk/Projects/pi-hmarl/performance_timeline.png', dpi=300, bbox_inches='tight')
+    fig3.savefig('/Users/fedorkruk/Projects/research_pi-hmarl/performance_timeline.png', dpi=300, bbox_inches='tight')
     
     fig4 = create_novelty_comparison()
-    fig4.savefig('/Users/fedorkruk/Projects/pi-hmarl/novelty_comparison.png', dpi=300, bbox_inches='tight')
+    fig4.savefig('/Users/fedorkruk/Projects/research_pi-hmarl/novelty_comparison.png', dpi=300, bbox_inches='tight')
     
     print("\n📊 Visualizations saved:")
     print("• research_overview.png - Complete achievement overview")
