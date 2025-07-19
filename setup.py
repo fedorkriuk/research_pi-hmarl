@@ -107,4 +107,3 @@ setup(
         "Source Code": "https://github.com/your-org/pi-hmarl",
     },
 )
-EOF < /dev/null

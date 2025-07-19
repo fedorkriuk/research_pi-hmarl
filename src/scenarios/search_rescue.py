@@ -130,7 +130,8 @@ class SearchAgent:
     def sense_environment(
         self,
         victims: List[VictimModel],
-        obstacles: List[np.ndarray]
+        obstacles: List[np.ndarray],
+        time: float = 0.0
     ) -> List[str]:
         """Sense nearby victims
         
@@ -151,7 +152,7 @@ class SearchAgent:
                 if distance <= self.sensor_range:
                     if self._has_line_of_sight(victim.position, obstacles):
                         victim.status = VictimStatus.DETECTED
-                        victim.discovery_time = logger.time
+                        victim.discovery_time = time
                         
                         self.detected_victims.add(victim.victim_id)
                         newly_detected.append(victim.victim_id)
@@ -160,7 +161,7 @@ class SearchAgent:
                         self.victim_beliefs[victim.victim_id] = {
                             'position': victim.position.copy(),
                             'severity': victim.severity,
-                            'last_seen': logger.time
+                            'last_seen': time
                         }
         
         return newly_detected
@@ -329,23 +330,35 @@ class SearchAgent:
         Returns:
             Path as list of waypoints
         """
-        # Simple A* pathfinding (simplified for example)
-        # In real implementation, would use proper pathfinding
-        
-        # For now, return direct path if no obstacles
+        # Improved pathfinding with better obstacle avoidance
+        # Check if direct path is clear
         if self._has_line_of_sight(target, obstacles):
             return [target]
         
-        # Otherwise, use waypoint navigation
+        # Find path around obstacles
         waypoints = []
         current = self.position.copy()
         
-        # Simple obstacle avoidance
-        for obstacle in obstacles:
-            if self._line_intersects_circle(current, target, obstacle[:2], 5.0):
-                # Add waypoint to go around
-                avoidance_point = obstacle[:2] + np.array([6.0, 0])
-                waypoints.append(avoidance_point)
+        # Simple but more robust obstacle avoidance
+        direction_to_target = target[:2] - current[:2]
+        distance_to_target = np.linalg.norm(direction_to_target)
+        
+        if distance_to_target > 0:
+            direction_to_target = direction_to_target / distance_to_target
+            
+            # Try different avoidance directions
+            for obstacle in obstacles:
+                if self._line_intersects_circle(current[:2], target[:2], obstacle[:2], 6.0):
+                    # Calculate perpendicular directions
+                    perp_dir = np.array([-direction_to_target[1], direction_to_target[0]])
+                    
+                    # Try both sides of obstacle
+                    for side in [1, -1]:
+                        avoidance_point = obstacle[:2] + side * perp_dir * 8.0
+                        # Add Z coordinate
+                        avoidance_3d = np.array([avoidance_point[0], avoidance_point[1], target[2]])
+                        waypoints.append(avoidance_3d)
+                        break  # Take first viable path
         
         waypoints.append(target)
         return waypoints
@@ -366,7 +379,7 @@ class SearchAgent:
         """
         for obstacle in obstacles:
             if self._line_intersects_circle(
-                self.position, target, obstacle[:2], 5.0
+                self.position[:2], target[:2], obstacle[:2], 5.0
             ):
                 return False
         return True
@@ -418,7 +431,11 @@ class SearchAgent:
         """
         if action['type'] == 'move' and action['target'] is not None:
             # Move towards target
-            direction = action['target'] - self.position
+            if len(action['target']) == 2:
+                target = np.array([action['target'][0], action['target'][1], self.position[2]])
+            else:
+                target = np.array(action['target'])
+            direction = target - self.position
             distance = np.linalg.norm(direction)
             
             if distance > 0:
@@ -610,10 +627,10 @@ class RescueCoordinator:
         # Get available rescuers
         rescuers = [a for a in agents if a.role == AgentRole.RESCUER]
         
-        # Get unassigned detected victims
+        # Get unassigned detected victims - include being_rescued to reassign if needed
         unassigned_victims = [
             v for v in victims.values()
-            if v.status == VictimStatus.DETECTED
+            if v.status in [VictimStatus.DETECTED, VictimStatus.BEING_RESCUED]
         ]
         
         # Sort by priority
@@ -659,7 +676,7 @@ class RescueCoordinator:
             mission_id=f"mission_{victim.victim_id}",
             victim_id=victim.victim_id,
             assigned_agents=assigned_agents,
-            start_time=logger.time,
+            start_time=0.0,  # Use scenario time
             priority=victim.severity
         )
         
@@ -814,11 +831,12 @@ class SearchRescueScenario:
     
     def _initialize_agents(self):
         """Initialize search and rescue agents"""
-        # Determine agent roles
-        num_searchers = self.num_agents // 2
-        num_rescuers = self.num_agents // 3
+        # Determine agent roles - fix role distribution
         num_coordinators = 1
-        num_support = self.num_agents - num_searchers - num_rescuers - num_coordinators
+        remaining_agents = self.num_agents - num_coordinators
+        num_searchers = max(1, remaining_agents // 2)  # At least 1 searcher
+        num_rescuers = max(1, remaining_agents - num_searchers)  # Rest are rescuers
+        num_support = 0  # Simplify by removing support role for now
         
         agent_id = 0
         
@@ -919,7 +937,8 @@ class SearchRescueScenario:
         for agent in self.agents:
             newly_detected = agent.sense_environment(
                 list(self.victims.values()),
-                self.obstacles
+                self.obstacles,
+                self.time
             )
             
             # Report detections
@@ -971,15 +990,33 @@ class SearchRescueScenario:
                 if victim_id in self.victims:
                     victim = self.victims[victim_id]
                     
-                    # Simple rescue completion
+                    # Improved rescue logic with time requirement
+                    distance = np.linalg.norm(victim.position - agent.position)
+                    
                     if victim.status == VictimStatus.BEING_RESCUED:
-                        victim.status = VictimStatus.RESCUED
-                        victim.rescue_time = self.time
-                        agent.assigned_victim = None
+                        # Rescue takes time - require agent to stay near victim
+                        rescue_time_required = 2.0  # 2 seconds to complete rescue
+                        if not hasattr(victim, 'rescue_start_time'):
+                            victim.rescue_start_time = self.time
                         
-                        logger.info(
-                            f"Agent {agent.agent_id} rescued {victim_id}"
-                        )
+                        if self.time - victim.rescue_start_time >= rescue_time_required:
+                            victim.status = VictimStatus.RESCUED
+                            victim.rescue_time = self.time
+                            agent.assigned_victim = None
+                            
+                            logger.info(
+                                f"Agent {agent.agent_id} rescued {victim_id} after {rescue_time_required}s"
+                            )
+                        # If agent moves away during rescue, reset rescue
+                        elif distance > 3.0:
+                            victim.status = VictimStatus.DETECTED
+                            if hasattr(victim, 'rescue_start_time'):
+                                delattr(victim, 'rescue_start_time')
+                            agent.assigned_victim = None
+                    # Start rescue if close enough
+                    elif victim.status == VictimStatus.DETECTED and distance <= 2.0:
+                        victim.status = VictimStatus.BEING_RESCUED
+                        victim.rescue_start_time = self.time
         
         # Communication phase
         all_messages = []

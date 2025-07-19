@@ -111,9 +111,9 @@ class MapBuilder:
         """
         robot_x, robot_y, robot_theta = robot_pose
         
-        # Convert to grid coordinates
-        robot_cell_x = int(robot_x / self.resolution)
-        robot_cell_y = int(robot_y / self.resolution)
+        # Convert to grid coordinates with bounds checking
+        robot_cell_x = max(0, min(self.map_size[0] - 1, int(robot_x / self.resolution)))
+        robot_cell_y = max(0, min(self.map_size[1] - 1, int(robot_y / self.resolution)))
         
         # Process laser scan
         if 'ranges' in sensor_data:
@@ -122,7 +122,7 @@ class MapBuilder:
             
             for i, (range_val, angle) in enumerate(zip(ranges, angles)):
                 if range_val > 0 and range_val < sensor_data.get('max_range', 30.0):
-                    # Ray tracing
+                    # Ray tracing - convert range to grid cells properly
                     self._trace_ray(
                         robot_cell_x, robot_cell_y,
                         robot_theta + angle,
@@ -165,9 +165,11 @@ class MapBuilder:
                 
                 cell.update(CellStatus.FREE, 0.9, time)
         
-        # Mark endpoint as occupied (if in range)
+        # Mark endpoint as occupied (if hit obstacle)
         if len(cells) > 0 and cells[-1] in self.grid:
-            if max_dist < sensor_data.get('max_range', 30.0) - 1:
+            # Only mark as occupied if we hit something within sensor range
+            actual_distance = max_dist * self.resolution  # Convert back to world units
+            if actual_distance < 30.0 - 1:  # Hit obstacle before max range
                 end_cell = self.grid[cells[-1]]
                 end_cell.update(CellStatus.OCCUPIED, 0.8, time)
     
@@ -567,25 +569,27 @@ class ExplorationAgent:
             # Cast ray
             ray_angle = self.orientation + angle
             
-            # Simple ray casting
-            for dist in np.linspace(0, max_range, 100):
+            # Fixed ray casting - correct obstacle detection
+            for dist in np.linspace(0.1, max_range, 100):  # Start at 0.1 to avoid self
                 x = self.position[0] + dist * np.cos(ray_angle)
                 y = self.position[1] + dist * np.sin(ray_angle)
                 
-                # Check map
+                # Check map bounds
                 map_x = int(x)
                 map_y = int(y)
                 
                 if (0 <= map_x < true_map.shape[1] and
                     0 <= map_y < true_map.shape[0]):
                     
-                    if true_map[map_y, map_x] == 0:  # Obstacle
+                    if true_map[map_y, map_x] == 0:  # Hit obstacle (0 = obstacle)
                         ranges.append(dist)
                         break
                 else:
-                    ranges.append(max_range)
+                    # Hit boundary
+                    ranges.append(dist)
                     break
             else:
+                # No obstacle found within range
                 ranges.append(max_range)
         
         return {
@@ -604,9 +608,21 @@ class ExplorationAgent:
             time: Current time
         """
         if self.local_map is None:
-            # Initialize local map centered on agent
+            # Initialize local map - use same size as global map for simplicity
             map_size = (200, 200)  # Local map size
             self.local_map = MapBuilder(map_size, resolution=1.0)
+            
+            # Initialize with some explored area around agent
+            agent_x = int(self.position[0])
+            agent_y = int(self.position[1])
+            
+            # Mark initial area as free
+            for dx in range(-5, 6):
+                for dy in range(-5, 6):
+                    gx, gy = agent_x + dx, agent_y + dy
+                    if (0 <= gx < map_size[0] and 0 <= gy < map_size[1]):
+                        if (gx, gy) in self.local_map.grid:
+                            self.local_map.grid[(gx, gy)].update(CellStatus.FREE, 0.9, time)
         
         # Update map
         pose = (self.position[0], self.position[1], self.orientation)
@@ -760,10 +776,13 @@ class SwarmCoordinator:
         """
         commands = {}
         
-        # Update global map from agent maps
+        # Update global map from agent maps - always try to merge
         for agent in agents:
-            if agent.local_map and agent.should_share_map(time):
+            if agent.local_map:
                 self.global_map.merge_map(agent.local_map)
+                # Force map sharing update
+                if agent.should_share_map(time):
+                    agent.last_map_share = time
         
         # Assign exploration targets
         if self.global_map.get_exploration_rate() < 0.8:
