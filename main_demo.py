@@ -45,11 +45,11 @@ def run_search_rescue_demo():
         if step % 50 == 0:
             state = scenario.get_state()
             print(f"Time: {state['time']:6.1f}s | "
-                  f"Rescued: {state['rescued_count']}/{state['total_victims']} | "
-                  f"Active agents: {state['active_agents']}")
+                  f"Rescued: {state['victims']['rescued']}/{state['victims']['total']} | "
+                  f"Active agents: {len(state['agents'])}")
         
         # Check if all victims rescued
-        if scenario.get_state()['rescued_count'] == scenario.num_victims:
+        if scenario.get_state()['victims']['rescued'] == scenario.num_victims:
             print(f"\n✓ All victims rescued in {scenario.get_state()['time']:.1f} seconds!")
             break
     
@@ -82,8 +82,8 @@ def run_swarm_exploration_demo():
         if int(scenario.time) % 5 == 0 and scenario.time > 0:
             state = scenario.get_state()
             print(f"Time: {state['time']:6.1f}s | "
-                  f"Explored: {state['exploration_rate']*100:5.1f}% | "
-                  f"Frontiers: {state['frontiers_remaining']:4d}")
+                  f"Explored: {state.get('exploration_rate', 0)*100:5.1f}% | "
+                  f"Frontiers: {state.get('frontiers_remaining', 0):4d}")
     
     state = scenario.get_state()
     elapsed = time.time() - start_time
@@ -141,9 +141,9 @@ def run_formation_control_demo():
         if step % 30 == 0:
             state = scenario.get_state()
             print(f"Time: {state['time']:6.1f}s | "
-                  f"Formation: {state['formation_type']:8s} | "
-                  f"Quality: {state['formation_quality']:4.2f} | "
-                  f"Progress: {state['waypoint_progress']}")
+                  f"Formation: {state.get('formation_type', 'unknown'):8s} | "
+                  f"Quality: {state.get('formation_quality', 0.0):4.2f} | "
+                  f"Progress: {state.get('waypoint_progress', 'N/A')}")
         
         # Check if mission completed
         if scenario.controller.current_waypoint_index >= len(waypoints):

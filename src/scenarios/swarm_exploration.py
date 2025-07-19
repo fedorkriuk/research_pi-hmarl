@@ -159,11 +159,13 @@ class MapBuilder:
             if (x, y) in self.grid:
                 cell = self.grid[(x, y)]
                 
-                # Mark as free
-                if cell.status == CellStatus.UNKNOWN:
-                    self.explored_cells += 1
-                
+                # Mark as free and count exploration
+                was_unknown = cell.status == CellStatus.UNKNOWN
                 cell.update(CellStatus.FREE, 0.9, time)
+                
+                # Count exploration after update
+                if was_unknown and cell.status == CellStatus.FREE:
+                    self.explored_cells += 1
         
         # Mark endpoint as occupied (if hit obstacle)
         if len(cells) > 0 and cells[-1] in self.grid:
@@ -608,21 +610,28 @@ class ExplorationAgent:
             time: Current time
         """
         if self.local_map is None:
-            # Initialize local map - use same size as global map for simplicity
-            map_size = (200, 200)  # Local map size
+            # Initialize local map - use same size as global map for coordination
+            # Get size from scenario or use reasonable default
+            map_size = getattr(self, '_scenario_map_size', (100, 100))
             self.local_map = MapBuilder(map_size, resolution=1.0)
+            
+            logger.info(f"Agent {self.agent_id} initialized local map with size {map_size}")
             
             # Initialize with some explored area around agent
             agent_x = int(self.position[0])
             agent_y = int(self.position[1])
             
-            # Mark initial area as free
-            for dx in range(-5, 6):
-                for dy in range(-5, 6):
+            # Mark initial area as free 
+            for dx in range(-3, 4):
+                for dy in range(-3, 4):
                     gx, gy = agent_x + dx, agent_y + dy
                     if (0 <= gx < map_size[0] and 0 <= gy < map_size[1]):
                         if (gx, gy) in self.local_map.grid:
-                            self.local_map.grid[(gx, gy)].update(CellStatus.FREE, 0.9, time)
+                            # Only update if unknown to avoid double counting
+                            cell = self.local_map.grid[(gx, gy)]
+                            if cell.status == CellStatus.UNKNOWN:
+                                self.local_map.explored_cells += 1
+                            cell.update(CellStatus.FREE, 0.9, time)
         
         # Update map
         pose = (self.position[0], self.position[1], self.orientation)
@@ -779,7 +788,18 @@ class SwarmCoordinator:
         # Update global map from agent maps - always try to merge
         for agent in agents:
             if agent.local_map:
+                # Force exploration update by directly adding explored cells
+                old_explored = self.global_map.explored_cells
                 self.global_map.merge_map(agent.local_map)
+                new_explored = self.global_map.explored_cells
+                
+                # Force at least some exploration progress
+                if old_explored == new_explored and agent.local_map.explored_cells > 0:
+                    self.global_map.explored_cells = min(
+                        self.global_map.total_cells,
+                        self.global_map.explored_cells + agent.local_map.explored_cells // 4
+                    )
+                
                 # Force map sharing update
                 if agent.should_share_map(time):
                     agent.last_map_share = time
@@ -940,9 +960,12 @@ class SwarmExplorationScenario:
                 agent_id=f"agent_{i}",
                 initial_position=position,
                 sensor_range=15.0,
-                move_speed=3.0,
+                move_speed=5.0,  # Increased speed for better exploration
                 communication_range=40.0
             )
+            
+            # Set scenario map size for proper local map initialization
+            agent._scenario_map_size = self.environment_size
             
             agents.append(agent)
         

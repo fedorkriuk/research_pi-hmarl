@@ -40,11 +40,11 @@ def run_search_rescue_demo():
             state = scenario.get_state()
             # Use correct state structure
             print(f"Time: {state['time']:6.1f}s | "
-                  f"Detected: {state['victims']['detected']}/{state['victims']['total']} | "
-                  f"Rescued: {state['victims']['rescued']}")
+                  f"Detected: {state.get('victims', {}).get('detected', 0)}/{state.get('victims', {}).get('total', 0)} | "
+                  f"Rescued: {state.get('victims', {}).get('rescued', 0)}")
         
         # Check if all victims rescued
-        if scenario.get_state()['victims']['rescued'] == scenario.num_victims:
+        if scenario.get_state().get('victims', {}).get('rescued', 0) == scenario.num_victims:
             print(f"\n✓ All victims rescued in {scenario.get_state()['time']:.1f} seconds!")
             break
     

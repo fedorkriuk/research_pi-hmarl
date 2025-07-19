@@ -31,8 +31,8 @@ def demo_search_rescue():
         if step % 10 == 0:
             state = scenario.get_state()
             print(f"Step {step}: Time={state['time']:.1f}s, "
-                  f"Detected={state['victims']['detected']}, "
-                  f"Rescued={state['victims']['rescued']}")
+                  f"Detected={state.get('victims', {}).get('detected', 0)}, "
+                  f"Rescued={state.get('victims', {}).get('rescued', 0)}")
     
     print("✓ Search & Rescue demo completed\n")
 
@@ -55,8 +55,8 @@ def demo_formation_control():
         if step % 10 == 0:
             state = scenario.get_state()
             print(f"Step {step}: Time={state['time']:.1f}s, "
-                  f"Formation={state['formation_type']}, "
-                  f"Quality={state['formation_quality']:.2f}")
+                  f"Formation={state.get('formation_type', 'unknown')}, "
+                  f"Quality={state.get('formation_quality', 0.0):.2f}")
     
     print("✓ Formation Control demo completed\n")
 

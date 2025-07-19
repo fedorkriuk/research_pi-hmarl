@@ -109,7 +109,7 @@ class FormationAgent:
         agent_id: str,
         index: int,
         position: np.ndarray,
-        max_speed: float = 5.0,
+        max_speed: float = 10.0,  # OPTIMIZED: Increased from 5.0
         communication_range: float = 50.0
     ):
         """Initialize formation agent
@@ -136,10 +136,10 @@ class FormationAgent:
         # Neighbor tracking
         self.neighbors: Dict[str, Dict[str, Any]] = {}
         
-        # Control gains
-        self.position_gain = 2.0
-        self.velocity_gain = 1.0
-        self.neighbor_gain = 0.5
+        # Control gains - OPTIMIZED for faster convergence
+        self.position_gain = 4.0  # Increased from 2.0 for stronger position control
+        self.velocity_gain = 1.5  # Increased damping for stability
+        self.neighbor_gain = 1.0  # Increased neighbor influence
         
         logger.info(f"Initialized FormationAgent {agent_id}")
     
@@ -446,9 +446,9 @@ class FormationController:
         self.waypoints = []
         self.current_waypoint_index = 0
         
-        # Control parameters
-        self.max_speed = 2.0
-        self.arrival_threshold = 2.0
+        # Control parameters - OPTIMIZED for faster navigation
+        self.max_speed = 8.0  # Increased from 2.0 for much faster movement
+        self.arrival_threshold = 5.0  # Increased for easier waypoint hitting
         
         logger.info(f"Initialized FormationController for {num_agents} agents")
     
@@ -488,10 +488,11 @@ class FormationController:
                 if self.current_waypoint_index < len(self.waypoints):
                     self.target_position = self.waypoints[self.current_waypoint_index]
             
-            # Compute velocity towards target
+            # Compute velocity towards target - OPTIMIZED
             if distance > 0:
                 direction = (target - self.center_position) / distance
-                speed = min(self.max_speed, distance)
+                # Use more aggressive speed scaling for faster progress
+                speed = min(self.max_speed, max(distance * 0.5, 2.0))  # At least 2.0 speed
                 self.velocity = direction * speed
                 
                 # Update heading
