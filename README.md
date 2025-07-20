@@ -576,12 +576,6 @@ validator = PhysicsValidator(
 
 ## 🤝 Community & Support
 
-### Get Help
-- **Documentation**: Comprehensive guides in `/docs`
-- **Issues**: Report bugs on GitHub
-- **Discussions**: Join our Discord community
-- **Office Hours**: Weekly Zoom sessions (Thursdays 2PM EST)
-
 ### Commercial Support
 - **Enterprise License**: Priority support & custom features
 - **Consulting**: Implementation assistance
@@ -592,12 +586,14 @@ validator = PhysicsValidator(
 
 ## 📄 License
 
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+This project is licensed under the Apache License 2.0 - see the [LICENSE](LICENSE) file for details.
 
-**Commercial Use**: Yes, permitted under MIT license
+**Commercial Use**: Yes, permitted under Apache 2.0 license
 **Attribution**: Required in documentation
+**Patent Protection**: Apache 2.0 provides explicit patent grants
 **Warranty**: Provided as-is (commercial support available)
 
+---
 
 <div align="center">
 
@@ -606,5 +602,7 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 **[Get Started](#-quick-start)** | **[Read Docs](#-documentation)** | **[Join Community](#-community--support)**
 
 **Made with ❤️ and ☕ by The Hook Lab team, for researchers and developers**
+
+**Contact:** fedor.kriuk@student.uts.edu.au
 
 </div>
