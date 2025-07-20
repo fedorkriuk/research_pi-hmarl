@@ -11,9 +11,9 @@
 **🏆 The First Production-Ready Physics-Aware Multi-Agent AI Framework**
 
 **Build Intelligent Swarms That Respect Real-World Physics**
-#
-</div>
 
+</div>
+#
 ---
 
 ## 🎯 Why Researchers and Developers Need PI-HMARL
