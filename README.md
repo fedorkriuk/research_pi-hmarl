@@ -1,4 +1,4 @@
-#PI-HMARL: Physics-Informed Hierarchical Multi-Agent Reinforcement Learning
+# PI-HMARL: Physics-Informed Hierarchical Multi-Agent Reinforcement Learning
 
 <div align="center">
 
