@@ -1,4 +1,4 @@
-# 🚁 PI-HMARL: Physics-Informed Hierarchical Multi-Agent Reinforcement Learning
+#PI-HMARL: Physics-Informed Hierarchical Multi-Agent Reinforcement Learning
 
 <div align="center">
 
@@ -8,7 +8,7 @@
 ![Status](https://img.shields.io/badge/status-Production%20Ready-brightgreen.svg)
 ![Performance](https://img.shields.io/badge/success%20rate-91.3%25-brightgreen.svg)
 
-**🏆 The First Production-Ready Physics-Aware Multi-Agent AI Framework**
+**The First Production-Ready Physics-Aware Multi-Agent AI Framework**
 
 **Build Intelligent Swarms That Respect Real-World Physics**
 
