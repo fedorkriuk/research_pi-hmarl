@@ -1,5 +1,5 @@
 # 🚁 PI-HMARL: Physics-Informed Hierarchical Multi-Agent Reinforcement Learning
-#
+
 <div align="center">
 
 ![Python](https://img.shields.io/badge/python-3.8%2B-blue.svg)
@@ -13,7 +13,7 @@
 **Build Intelligent Swarms That Respect Real-World Physics**
 
 </div>
-#
+
 ---
 
 ## 🎯 Why Researchers and Developers Need PI-HMARL
