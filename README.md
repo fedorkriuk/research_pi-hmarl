@@ -588,18 +588,13 @@ validator = PhysicsValidator(
 
 This project is licensed under the Apache License 2.0 - see the [LICENSE](LICENSE) file for details.
 
-**Commercial Use**: Yes, permitted under Apache 2.0 license
-**Attribution**: Required in documentation
-**Patent Protection**: Apache 2.0 provides explicit patent grants
-**Warranty**: Provided as-is (commercial support available)
-
 ---
 
 <div align="center">
 
 ### 🚀 Start Building Intelligent Multi-Agent Systems Today!
 
-**[Get Started](#-quick-start)** | **[Read Docs](#-documentation)** | **[Join Community](#-community--support)**
+**[Get Started](#-quick-start)** | **[Read Docs](#-documentation)**
 
 **Made with ❤️ and ☕ by The Hook Lab team, for researchers and developers**
 
