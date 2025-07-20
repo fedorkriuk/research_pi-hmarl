@@ -598,22 +598,6 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 **Attribution**: Required in documentation
 **Warranty**: Provided as-is (commercial support available)
 
----
-
-## 🙏 Citation
-
-If you use PI-HMARL in your research, please cite:
-
-```bibtex
-@inproceedings{pihmarl2024,
-  title={Physics-Informed Hierarchical Multi-Agent Reinforcement Learning},
-  author={Smith, Jane and Doe, John and Johnson, Alice and Wilson, Bob},
-  booktitle={Neural Information Processing Systems},
-  year={2024}
-}
-```
-
----
 
 <div align="center">
 
@@ -621,6 +605,6 @@ If you use PI-HMARL in your research, please cite:
 
 **[Get Started](#-quick-start)** | **[Read Docs](#-documentation)** | **[Join Community](#-community--support)**
 
-**Made with ❤️ by researchers, for researchers and developers**
+**Made with ❤️ and ☕ by The Hook Lab team, for researchers and developers**
 
 </div>
