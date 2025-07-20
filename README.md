@@ -580,7 +580,6 @@ validator = PhysicsValidator(
 - **Enterprise License**: Priority support & custom features
 - **Consulting**: Implementation assistance
 - **Training**: On-site workshops available
-- **SLA**: 24/7 support for production deployments
 
 ---
 
