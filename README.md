@@ -576,7 +576,6 @@ validator = PhysicsValidator(
 
 ## 🤝 Community & Support
 
-### Commercial Support
 - **Enterprise License**: Priority support & custom features
 - **Consulting**: Implementation assistance
 - **Training**: On-site workshops available
