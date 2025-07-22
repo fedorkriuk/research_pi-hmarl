@@ -1,4 +1,4 @@
-# 🚁 PI-HMARL: Physics-Informed Hierarchical Multi-Agent Reinforcement Learning
+# PI-HMARL: Physics-Informed Hierarchical Multi-Agent Reinforcement Learning
 
 <div align="center">
 
@@ -8,7 +8,7 @@
 ![Status](https://img.shields.io/badge/status-Production%20Ready-brightgreen.svg)
 ![Performance](https://img.shields.io/badge/success%20rate-91.3%25-brightgreen.svg)
 
-**🏆 The First Production-Ready Physics-Aware Multi-Agent AI Framework**
+**The First Production-Ready Physics-Aware Multi-Agent AI Framework**
 
 **Build Intelligent Swarms That Respect Real-World Physics**
 
@@ -576,42 +576,15 @@ validator = PhysicsValidator(
 
 ## 🤝 Community & Support
 
-### Get Help
-- **Documentation**: Comprehensive guides in `/docs`
-- **Issues**: Report bugs on GitHub
-- **Discussions**: Join our Discord community
-- **Office Hours**: Weekly Zoom sessions (Thursdays 2PM EST)
-
-### Commercial Support
 - **Enterprise License**: Priority support & custom features
 - **Consulting**: Implementation assistance
 - **Training**: On-site workshops available
-- **SLA**: 24/7 support for production deployments
 
 ---
 
 ## 📄 License
 
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
-
-**Commercial Use**: Yes, permitted under MIT license
-**Attribution**: Required in documentation
-**Warranty**: Provided as-is (commercial support available)
-
----
-
-## 🙏 Citation
-
-If you use PI-HMARL in your research, please cite:
-
-```bibtex
-@inproceedings{pihmarl2024,
-  title={Physics-Informed Hierarchical Multi-Agent Reinforcement Learning},
-  author={Smith, Jane and Doe, John and Johnson, Alice and Wilson, Bob},
-  booktitle={Neural Information Processing Systems},
-  year={2024}
-}
-```
+This project is licensed under the Apache License 2.0 - see the [LICENSE](LICENSE) file for details.
 
 ---
 
@@ -619,8 +592,10 @@ If you use PI-HMARL in your research, please cite:
 
 ### 🚀 Start Building Intelligent Multi-Agent Systems Today!
 
-**[Get Started](#-quick-start)** | **[Read Docs](#-documentation)** | **[Join Community](#-community--support)**
+**[Get Started](#-quick-start)** | **[Read Docs](#-documentation)**
 
-**Made with ❤️ by researchers, for researchers and developers**
+**Made with ❤️ and ☕ by The Hook Lab team, for researchers and developers**
+
+**Contact:** fedor.kriuk@student.uts.edu.au
 
 </div>
