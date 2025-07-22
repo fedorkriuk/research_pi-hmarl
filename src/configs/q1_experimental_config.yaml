@@ -1,0 +1,241 @@
+# Q1 Publication-Grade Experimental Configuration
+# Meeting standards for JMLR, Nature Machine Intelligence, IEEE TPAMI
+
+experiment:
+  name: "PI-HMARL_Q1_Publication_Study"
+  description: "Comprehensive evaluation of Physics-Informed Hierarchical Multi-Agent RL"
+  
+  # Q1 Statistical Requirements
+  num_seeds: 30  # Minimum for top-tier venues
+  bootstrap_iterations: 50000
+  significance_level: 0.01
+  effect_size_threshold: 1.2  # Flag unrealistic effect sizes
+  
+  # Training Configuration
+  num_episodes: 1000
+  num_steps_per_episode: 1000
+  evaluation_interval: 50
+  checkpoint_interval: 100
+  
+  # Parallel Execution
+  parallel_seeds: 5
+  use_gpu: true
+  
+  # Q1 Analysis Components
+  compute_theory: true
+  profile_computation: true
+  statistical_tests:
+    - "bootstrap_ci"
+    - "permutation_test"
+    - "bayesian_analysis"
+    - "power_analysis"
+  
+  # Output Configuration
+  output_dir: "q1_experiments/"
+  save_checkpoints: true
+  generate_latex_tables: true
+  generate_plots: true
+
+# Physical Domains for Evaluation
+domains:
+  aerial:
+    enabled: true
+    scenarios: ["search_rescue", "formation_control", "surveillance"]
+    agent_counts: [5, 10, 15, 20]
+    noise_levels: [0.05, 0.10, 0.15]
+    
+  ground:
+    enabled: true
+    scenarios: ["exploration", "coordination", "transport"]
+    agent_counts: [8, 12, 16]
+    noise_levels: [0.10, 0.15, 0.20]
+    
+  underwater:
+    enabled: true
+    scenarios: ["inspection", "mapping", "monitoring"]
+    agent_counts: [6, 10, 14]
+    noise_levels: [0.15, 0.20, 0.25]
+    
+  space:
+    enabled: true
+    scenarios: ["formation", "debris_avoidance", "docking"]
+    agent_counts: [4, 8, 12]
+    noise_levels: [0.05, 0.10, 0.15]
+
+# Required Baseline Algorithms
+baselines:
+  IPPO:
+    enabled: true
+    config:
+      learning_rate: 3e-4
+      hidden_dim: 256
+      ppo_epochs: 10
+      
+  IQL:
+    enabled: true
+    config:
+      learning_rate: 1e-3
+      epsilon_start: 1.0
+      epsilon_end: 0.01
+      epsilon_decay: 0.995
+      
+  QMIX:
+    enabled: true
+    config:
+      learning_rate: 5e-4
+      mixing_network_dim: 32
+      
+  MADDPG:
+    enabled: true
+    config:
+      actor_lr: 1e-3
+      critic_lr: 1e-3
+      tau: 0.01
+      
+  MAPPO:
+    enabled: true
+    config:
+      learning_rate: 3e-4
+      value_loss_coef: 0.5
+      
+  Physics-MAPPO:
+    enabled: true
+    config:
+      learning_rate: 3e-4
+      physics_weight: 0.1
+      
+  SOTA-Physics-RL:
+    enabled: true
+    config:
+      method: "CPPO"  # Constrained PPO
+      constraint_threshold: 0.1
+      
+  HAD:
+    enabled: true
+    config:
+      hierarchy_levels: 2
+      decomposition: "spatial"
+      
+  HC-MARL:
+    enabled: true
+    config:
+      hierarchy_levels: 3
+      consensus_weight: 0.5
+      
+  Random:
+    enabled: true
+    config: {}
+    
+  Centralized-Optimal:
+    enabled: true
+    config:
+      planning_horizon: 10
+      
+  Human-Expert:
+    enabled: false  # Optional
+    config:
+      demo_path: "expert_demos/"
+
+# PI-HMARL Configuration
+pi_hmarl:
+  # Architecture
+  hierarchy_levels: 3
+  strategic_horizon: 300  # 5 minutes
+  tactical_horizon: 30    # 30 seconds
+  operational_horizon: 1  # 1 second
+  
+  # Physics Configuration
+  physics_weight: 1.0
+  physics_constraints:
+    - "velocity"
+    - "acceleration"
+    - "energy"
+    - "collision"
+  physics_compliance_threshold: 0.95
+  
+  # Learning Configuration
+  learning_rate: 1e-3
+  batch_size: 64
+  buffer_size: 100000
+  gamma: 0.99
+  
+  # Attention Mechanism
+  attention_heads: 8
+  attention_dim: 128
+  
+  # Communication
+  communication_rounds: 3
+  message_dim: 64
+
+# Theoretical Analysis Configuration
+theoretical_analysis:
+  convergence_analysis:
+    learning_rates: [0.001, 0.01, 0.1]
+    physics_weights: [0.1, 0.5, 1.0, 2.0]
+    
+  sample_complexity:
+    confidence_levels: [0.90, 0.95, 0.99]
+    accuracy_levels: [0.01, 0.05, 0.1]
+    
+  regret_analysis:
+    time_horizons: [1000, 10000, 100000]
+    
+  stability_analysis:
+    perturbation_levels: [0.01, 0.05, 0.1]
+
+# Computational Profiling Configuration
+computational_profiling:
+  profile_gpu: true
+  profile_energy: true
+  
+  scalability_test:
+    agent_counts: [2, 5, 10, 20, 50, 100]
+    
+  real_time_test:
+    deadline_ms: 100
+    num_trials: 1000
+    
+  memory_profiling:
+    track_peak: true
+    track_average: true
+
+# Adversarial Testing Configuration
+adversarial_testing:
+  enabled: true
+  
+  failure_scenarios:
+    agent_failure_rates: [0.1, 0.2, 0.3]
+    communication_failure_rates: [0.05, 0.1, 0.2]
+    
+  byzantine_scenarios:
+    byzantine_agent_ratio: [0.1, 0.2, 0.33]
+    
+  cyber_attacks:
+    jamming_probability: 0.3
+    false_message_rate: 0.1
+
+# Q1 Compliance Validation
+q1_validation:
+  minimum_requirements:
+    seeds: 30
+    baselines: 8
+    domains: 4
+    effect_size_limit: 1.2
+    
+  theoretical_requirements:
+    - "convergence_proof"
+    - "sample_complexity_bounds"
+    - "regret_analysis"
+    - "stability_guarantees"
+    
+  statistical_requirements:
+    - "bootstrap_confidence_intervals"
+    - "multiple_comparison_correction"
+    - "power_analysis"
+    - "effect_size_reporting"
+    
+  computational_requirements:
+    - "scalability_analysis"
+    - "real_time_guarantees"
+    - "memory_profiling"
+    - "energy_analysis"
